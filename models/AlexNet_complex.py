@@ -1,6 +1,5 @@
 import torch
 from torch import nn
-import pytorch_lightning as pl
 from einops import rearrange
 from utils_complex.complex_functions_bio import stable_angle
 import utils_complex.complex_functions_fccn as cf
