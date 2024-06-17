@@ -2,7 +2,6 @@ import os
 import torch
 import torch.nn as nn
 import torch.distributed as dist
-import pytorch_lightning as pl
 import numpy as np
 from einops import rearrange
 from matplotlib.ticker import MaxNLocator
