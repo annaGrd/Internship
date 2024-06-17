@@ -5,7 +5,6 @@ import torch
 from typing import TypeVar, Union, Tuple, Optional
 from torch import nn, Tensor
 from torch.nn import Module, Parameter, init
-import pytorch_lightning as pl
 import torch.nn.functional as F
 from utils_complex.complex_functions_bio import stable_angle, retrieve_elements_from_indices, get_complex_number, apply_layer_from_real
 from torch.overrides import has_torch_function, handle_torch_function
