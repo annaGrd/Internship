@@ -1,6 +1,7 @@
 import os
 import torch
 import torch.nn as nn
+import torch.distributed as dist
 import pytorch_lightning as pl
 import numpy as np
 from einops import rearrange
@@ -9,6 +10,13 @@ import argparse
 from opts import parser
 from utils import dataloaders
 
+world_size = int(os.environ["WORLD_SIZE"])
+rank = int(os.environ["LOCAL_RANK"])
+global_rank = int(os.environ["RANK"])
+
+torch.cuda.set_device(rank)
+
+dist.init_process_group(backend="nccl")
 
 def arguments():
     parser = argparse.ArgumentParser(description="Classifying natural images with complex-valued neural networks")
@@ -82,6 +90,11 @@ else: # args.model == 'AlexNet_real':
     test_loader = dataloaders.RGBtest_data()
 
 
+def synchronise_gradients(model):
+    for param in model.parameters():
+        dist.all_reduce(param.grad)
+
+
 def training(model, num_epochs, epoch, train_loader, optimizer, criterion):
     n_total_steps = len(train_loader)
     model.train()
@@ -93,25 +106,32 @@ def training(model, num_epochs, epoch, train_loader, optimizer, criterion):
 
     for i, (images, labels) in enumerate(train_loader): # to get all the different batches
 
-        images, labels = images.to(device), labels.to(device)
+        images, labels = images.cuda(), labels.cuda()
 
-        outputs = model(images)
+        splitted_images = torch.split(images, images.size(0)//world_size)
+        splitted_labels = torch.split(labels, label.size(0)//world_size)
+
+        selected_images = splitted_images[world_size]
+        selected_labels = splitted_labels[world_size]
+
+        outputs = model(selected_images)
         outputs_magnitude = outputs.abs()
-        loss = criterion(outputs_magnitude, labels)
+        loss = criterion(outputs_magnitude, selected_labels)
 
         run_loss += loss.item()
-        total += labels.size(0)
+        total += selected_labels.size(0)
         cnt += 1
         _, predicted = torch.max(outputs_magnitude.data, 1)
-        correct += (predicted == labels).sum().item()
+        correct += (predicted == selected_labels).sum().item()
 
         # Backward and optimize
         optimizer.zero_grad() # empty the gradient
         loss.backward()
+        synchronise_gradients(model)
         optimizer.step()
 
-    print()
-    print(f'Epoch {epoch}')
+    if global_rank == 0:
+        print(f'\nEpoch {epoch}')
     return run_loss / cnt, correct / total
 
 
@@ -127,7 +147,7 @@ def validation(model, val_loader, criterion):
         run_loss = 0.0
 
         for batch_idx, (images, labels) in enumerate(val_loader):
-            images, labels = images.to(device), labels.to(device)
+            images, labels = images.cuda(), labels.cuda()
 
             #outputs = model(images)[-1]
             outputs = model(images)
@@ -167,7 +187,7 @@ def testing(model, test_loader, criterion, noise_type, rgb_loader, noise_level):
         run_loss = 0.0
 
         for batch_idx, (images, labels) in enumerate(test_loader):
-            images, labels = images.to(device), labels.to(device)
+            images, labels = images.cuda(), labels.cuda()
             outputs = model(images)
 
             outputs_magnitude = outputs.abs()
@@ -199,39 +219,40 @@ def main(num_epochs, batch_size, learning_rate, classes, train_loader=train_load
     #if args.model == 'AlexNet_real_small' or args.model == 'AlexNet_complex_bio':
     if args.model == 'AlexNet_complex':
         #ComplexWeigth_AlexNet, AlexNet
-        model = AlexNet(num_classes=args.num_classes).to(device)
+        model = AlexNet(num_classes=args.num_classes).cuda()
     elif args.model == 'VGG11_complex' or 'VGG11_real':
-        model = VGG11(num_classes=args.num_classes).to(device)
+        model = VGG11(num_classes=args.num_classes).cuda()
     elif args.model == 'VGG13_complex' or 'VGG13_real':
-        model = VGG13(num_classes=args.num_classes).to(device)
+        model = VGG13(num_classes=args.num_classes).cuda()
     elif args.model == 'VGG16_complex' or 'VGG16_real':
-        model = VGG16(num_classes=args.num_classes).to(device)
+        model = VGG16(num_classes=args.num_classes).cuda()
     elif args.model == 'VGG19_complex' or 'VGG19_real':
-        model = VGG19(num_classes=args.num_classes).to(device)
+        model = VGG19(num_classes=args.num_classes).cuda()
     else :
-        model = AlexNet(num_classes=args.num_classes).to(device)
+        model = AlexNet(num_classes=args.num_classes).cuda()
 
     epochs = 0
 
-    model.to(device)
+    model.cuda()
 
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-4)
-    criterion = nn.CrossEntropyLoss().to(device)
+    criterion = nn.CrossEntropyLoss().cuda()
 
     for epoch in range(epochs, num_epochs+epochs):
 
-        train_loss, train_acc = training(model, num_epochs, epoch, train_loader, optimizer, criterion)
-        val_loss, val_acc = validation(model, val_loader, criterion)
+        train_loss, train_acc = training(model.cuda(), num_epochs, epoch, train_loader, optimizer, criterion)
+        
+        if global_rank == 0:
+            val_loss, val_acc = validation(model.cuda(), val_loader, criterion)
+            print(f"Train_loss: {train_loss}")
+            print(f"Val: {val_loss}")
 
-        print(f"Train_loss: {train_loss}")
-        print(f"Val: {val_loss}")
+    if global_rank == 0:
+        test_loader = dataloaders.make_loader(test_loader, batch_size)
 
-    test_loader = dataloaders.make_loader(test_loader, batch_size)
-
-    test_loss, test_acc = testing(model, test_loader, criterion, noise_type, RGBtrain_loader, None)
-    print(f"Test Loss: {test_loss}")
-    print(f"Test Accuracy: {test_acc*100} %")
-    print()
+        test_loss, test_acc = testing(model, test_loader, criterion, noise_type, RGBtrain_loader, None)
+        print(f"Test Loss: {test_loss}")
+        print(f"Test Accuracy: {test_acc*100} %\n")
 
     return model
 
