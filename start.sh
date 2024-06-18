@@ -18,4 +18,4 @@ echo Options : ${options}
 echo Using ${SLURM_JOB_NUM_NODES} nodes \($nodes\) and every GPU on every node.
 
 srun singularity exec --nv /beegfs/aaguilam/images/nanotron.sif \
-torchrun --nnodes ${SLURM_JOB_NUM_NODES} --nproc-per-node=2 ${options} $1 --filename $2 --learning_rate $3 --batch_size $4 --epochs $5 --num_classes $6 --noise_type $7 --load $8 --save $9 --model $10
+torchrun --nnodes ${SLURM_JOB_NUM_NODES} --nproc-per-node=2 ${options} $1 --filename $2 --learning_rate $3 --batch_size $4 --epochs $5 --num_classes $6 --noise_type $7 --load $8 --save $9 --model ${10}

@@ -6,7 +6,6 @@ import numpy as np
 from einops import rearrange
 from matplotlib.ticker import MaxNLocator
 import argparse
-from opts import parser
 from utils import dataloaders
 
 world_size = int(os.environ["WORLD_SIZE"])
@@ -21,8 +20,8 @@ def arguments():
     parser = argparse.ArgumentParser(description="Classifying natural images with complex-valued neural networks")
 
     parser.add_argument('--filename', type=str, default="test")
-    parser.add_argument('--lr', '--learning-rate', default=1e-3, type=float)
-    parser.add_argument('--batch-size', default=256, type=int)
+    parser.add_argument('--learning_rate', default=1e-3, type=float)
+    parser.add_argument('--batch_size', default=256, type=int)
     parser.add_argument('--epochs', default=1, type=int)
     parser.add_argument('--num_classes', default=10, type=int)
     parser.add_argument('--noise_type', default=None)
@@ -31,7 +30,7 @@ def arguments():
 
     parser.add_argument('--model', type=str, default='AlexNet_complex')
 
-    return parser.parse_args("")
+    return parser.parse_args()
 
 args = arguments()
 
@@ -108,10 +107,10 @@ def training(model, num_epochs, epoch, train_loader, optimizer, criterion):
         images, labels = images.cuda(), labels.cuda()
 
         splitted_images = torch.split(images, images.size(0)//world_size)
-        splitted_labels = torch.split(labels, label.size(0)//world_size)
+        splitted_labels = torch.split(labels, labels.size(0)//world_size)
 
-        selected_images = splitted_images[world_size]
-        selected_labels = splitted_labels[world_size]
+        selected_images = splitted_images[global_rank]
+        selected_labels = splitted_labels[global_rank]
 
         outputs = model(selected_images)
         outputs_magnitude = outputs.abs()
