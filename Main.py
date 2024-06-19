@@ -218,46 +218,49 @@ def main(num_epochs, batch_size, learning_rate, classes, train_loader=train_load
 
     for epoch in range(epochs, num_epochs+epochs):
         train_loss, train_acc = training(model, num_epochs, epoch, train_loader, optimizer, criterion)
-        val_loss, val_acc = validation(model, val_loader, criterion)
+        
+        if global_rank == 0:
+            val_loss, val_acc = validation(model, val_loader, criterion)
 
-        if val_acc > best_test_acc:
-            print(f"Saving ... ")
-            state = {
-                    'model': model.state_dict(),
-                    'acc': val_acc,
-                    'epoch': epoch,
-                    }
+            if val_acc > best_test_acc:
+                print(f"Saving ... ")
+                state = {
+                        'model': model.state_dict(),
+                        'acc': val_acc,
+                        'epoch': epoch,
+                        }
 
-            if save:
-                torch.save(state, model_path)
-            best_test_acc = val_acc
+                if save:
+                    torch.save(state, model_path)
+                best_test_acc = val_acc
 
-        print(f"Train_loss: {train_loss}")
-        print(f"Val: {val_loss}")
+            print(f"Train_loss: {train_loss}")
+            print(f"Val: {val_loss}")
 
         # Write results to CSV file
         with open(csv_filename, mode='a', newline='') as file:
             writer = csv.writer(file)
             writer.writerow([epoch + 1, train_loss, train_acc, val_loss, val_acc, best_test_acc])
 
-    list_test_loader = dataloaders.npy_make_loader(list_test_loader, batch_size)
-    noise_list = ['gaussian_noise', 'shot_noise', 'impulse_noise', 'defocus_blur', 'glass_blur', 'motion_blur',
-    'zoom_blur', 'snow','frost', 'fog', 'brightness', 'contrast', 'elastic_transform', 'pixelate', 'jpeg_compression',
-    'speckle_noise', 'gaussian_blur', 'spatter', 'saturate']
-    
-    with open(csv_filename, mode='a', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow(["Noise Type", "Test Loss", "Test Accuracy"])
+    if global_rank == 0:
+        list_test_loader = dataloaders.npy_make_loader(list_test_loader, batch_size)
+        noise_list = ['gaussian_noise', 'shot_noise', 'impulse_noise', 'defocus_blur', 'glass_blur', 'motion_blur',
+        'zoom_blur', 'snow','frost', 'fog', 'brightness', 'contrast', 'elastic_transform', 'pixelate', 'jpeg_compression',
+        'speckle_noise', 'gaussian_blur', 'spatter', 'saturate']
+        
+        with open(csv_filename, mode='a', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(["Noise Type", "Test Loss", "Test Accuracy"])
 
-        for i in range(len(noise_list)):
-            noise_type = noise_list[i]
-            test_loss, test_acc = testing(model, list_test_loader[i], criterion, noise_type, RGBtrain_loader)
-            print(f"{noise_type} noise")
-            print(f"Test Loss: {test_loss}")
-            print(f"Test Accuracy: {test_acc*100} %")
-            print()
+            for i in range(len(noise_list)):
+                noise_type = noise_list[i]
+                test_loss, test_acc = testing(model, list_test_loader[i], criterion, noise_type, RGBtrain_loader)
+                print(f"{noise_type} noise")
+                print(f"Test Loss: {test_loss}")
+                print(f"Test Accuracy: {test_acc*100} %")
+                print()
 
-            writer.writerow([noise_type, test_loss, test_acc])
+                writer.writerow([noise_type, test_loss, test_acc])
 
     return model
 
