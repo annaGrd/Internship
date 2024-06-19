@@ -72,7 +72,7 @@ def training(model, num_epochs, epoch, train_loader, optimizer, criterion):
         selected_images = splitted_images[global_rank]
         selected_labels = splitted_labels[global_rank]
 
-        outputs = model(selected_images)
+        outputs = model(selected_images)[-1]
         outputs_magnitude = outputs.abs()
         loss = criterion(outputs_magnitude, selected_labels)
 
@@ -107,8 +107,8 @@ def validation(model, val_loader, criterion):
         for batch_idx, (images, labels) in enumerate(val_loader):
             images, labels = images.cuda(), labels.cuda()
 
-            #outputs = model(images)[-1]
-            outputs = model(images)
+            outputs = model(images)[-1]
+            #outputs = model(images)
             outputs_magnitude = outputs.abs()
             loss = criterion(outputs_magnitude, labels)
 
@@ -146,7 +146,7 @@ def testing(model, test_loader, criterion, noise_type, rgb_loader):
 
         for batch_idx, (images, labels) in enumerate(test_loader):
             images, labels = images.cuda(), labels.cuda()
-            outputs = model(images)
+            outputs = model(images)[-1]
 
             outputs_magnitude = outputs.abs()
             loss = criterion(outputs_magnitude, labels)
