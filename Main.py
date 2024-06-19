@@ -113,6 +113,8 @@ def training(model, num_epochs, epoch, train_loader, optimizer, criterion):
         selected_labels = splitted_labels[global_rank]
 
         outputs = model(selected_images)
+        if args.model.startswith("AlexNet"):
+            outputs = outputs[-1]
         outputs_magnitude = outputs.abs()
         loss = criterion(outputs_magnitude, selected_labels)
 
@@ -149,6 +151,8 @@ def validation(model, val_loader, criterion):
 
             #outputs = model(images)[-1]
             outputs = model(images)
+            if args.model.startswith("AlexNet"):
+                outputs = outputs[-1]
             outputs_magnitude = outputs.abs()
             loss = criterion(outputs_magnitude, labels)
 
@@ -188,6 +192,8 @@ def testing(model, test_loader, criterion, noise_type, rgb_loader, noise_level):
             images, labels = images.cuda(), labels.cuda()
             outputs = model(images)
 
+            if args.model.startswith("AlexNet"):
+                outputs = outputs[-1]
             outputs_magnitude = outputs.abs()
             loss = criterion(outputs_magnitude, labels)
 
@@ -217,7 +223,7 @@ def main(num_epochs, batch_size, learning_rate, classes, train_loader=train_load
     #if args.model == 'AlexNet_real_small' or args.model == 'AlexNet_complex_bio':
     if args.model == 'AlexNet_complex':
         #ComplexWeigth_AlexNet, AlexNet
-        model = AlexNet(num_classes=args.num_classes).cuda()
+        model = ComplexWeigth_AlexNet(num_classes=args.num_classes).cuda()
     elif args.model == 'VGG11_complex' or 'VGG11_real':
         model = VGG11(num_classes=args.num_classes).cuda()
     elif args.model == 'VGG13_complex' or 'VGG13_real':
@@ -256,3 +262,6 @@ def main(num_epochs, batch_size, learning_rate, classes, train_loader=train_load
 
 
 model = main(args.epochs, args.batch_size, args.learning_rate, classes, train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, noise_type=args.noise_type, load=args.load, save=args.save)
+
+if global_rank == 0:    
+    torch.save(model, f"{args.model}_{args.epochs}_{args.batch_size}.pt")
