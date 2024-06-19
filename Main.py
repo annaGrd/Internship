@@ -7,6 +7,7 @@ from einops import rearrange
 from matplotlib.ticker import MaxNLocator
 import argparse
 from utils import dataloaders
+import csv
 
 world_size = int(os.environ["WORLD_SIZE"])
 rank = int(os.environ["LOCAL_RANK"])
@@ -14,7 +15,7 @@ global_rank = int(os.environ["RANK"])
 
 torch.cuda.set_device(rank)
 
-dist.init_process_group(backend="nccl")
+dist.init_process_group(back    end="nccl")
 
 def arguments():
     parser = argparse.ArgumentParser(description="Classifying natural images with complex-valued neural networks")
@@ -49,7 +50,8 @@ elif args.model == 'AlexNet_complex_bio':
 elif args.model == 'AlexNet_complex':
     from models.AlexNet_complex import ComplexWeigth_AlexNet, AlexNet
     train_loader, val_loader = dataloaders.iget_train_data()
-    test_loader = dataloaders.iget_test_data()
+    # test_loader = dataloaders.iget_test_data()
+    list_test_loader = dataloaders.npy_test_data()
 elif args.model == 'VGG11_complex':
     from models.VGG_complex import VGG11
     train_loader, val_loader = dataloaders.iget_train_data()
@@ -173,7 +175,7 @@ def validation(model, val_loader, criterion):
     return run_loss / cnt, correct / total
 
 
-def testing(model, test_loader, criterion, noise_type, rgb_loader, noise_level):
+def testing(model, test_loader, criterion, noise_type, rgb_loader):
     # put the model in evaluation mode
     model.eval()
 
@@ -205,54 +207,103 @@ def testing(model, test_loader, criterion, noise_type, rgb_loader, noise_level):
 
     return run_loss / cnt, correct / total
 
-
-def main(num_epochs, batch_size, learning_rate, classes, train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, noise_type=None, load=False, save=False):
-
-    train_loader = dataloaders.make_loader(train_loader, batch_size)
-    val_loader = dataloaders.make_loader(val_loader, batch_size)
+def main(num_epochs, batch_size, learning_rate, classes, train_loader=train_loader, val_loader=val_loader, list_test_loader=list_test_loader, noise_type=None, load=False, save=False):
+    # Initialize CSV file
+    csv_filename = f'{args.model}_results.csv'
+    with open(csv_filename, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(["Epoch", "Train Loss", "Train Accuracy", "Val Loss", "Val Accuracy", "Best Accuracy"])
+    
+    train_loader = dataloaders.make_train_loader(train_loader, batch_size)
+    val_loader = dataloaders.make_test_loader(val_loader, batch_size)
     RGBtrain_loader = dataloaders.RGBtest_data()
-    RGBtrain_loader = dataloaders.make_loader(RGBtrain_loader, batch_size)
+    RGBtrain_loader = dataloaders.make_test_loader(RGBtrain_loader, batch_size)
 
+    if args.model == 'ResNet18_complex':
+        model = resnet18(num_classes=args.num_classes)
+    elif args.model == 'ResNet34_complex':
+        model = resnet34(num_classes=args.num_classes)
+    elif args.model == 'ResNet50_complex':
+        model = resnet50(num_classes=args.num_classes)
+    elif args.model == 'ResNet101_complex':
+        model = resnet101(num_classes=args.num_classes)
+    elif args.model == 'ResNet152_complex':
+        model = resnet152(num_classes=args.num_classes)
+    elif args.model == 'AlexNet_complex':
+        model = AlexNet(num_classes=args.num_classes).to(device)
+    elif args.model in ['VGG11_complex', 'VGG11_real']:
+        model = VGG11(num_classes=args.num_classes).to(device)
+    elif args.model in ['VGG13_complex', 'VGG13_real']:
+        model = VGG13(num_classes=args.num_classes).to(device)
+    elif args.model in ['VGG16_complex', 'VGG16_real']:
+        model = VGG16(num_classes=args.num_classes).to(device)
+    elif args.model in ['VGG19_complex', 'VGG19_real']:
+        model = VGG19(num_classes=args.num_classes).to(device)
+    else:  # AlexNet_real_small or AlexNet_complex_bio
+        model = AlexNet(num_classes=args.num_classes).to(device)
 
-    #if args.model == 'AlexNet_real_small' or args.model == 'AlexNet_complex_bio':
-    if args.model == 'AlexNet_complex':
-        #ComplexWeigth_AlexNet, AlexNet
-        model = AlexNet(num_classes=args.num_classes).cuda()
-    elif args.model == 'VGG11_complex' or 'VGG11_real':
-        model = VGG11(num_classes=args.num_classes).cuda()
-    elif args.model == 'VGG13_complex' or 'VGG13_real':
-        model = VGG13(num_classes=args.num_classes).cuda()
-    elif args.model == 'VGG16_complex' or 'VGG16_real':
-        model = VGG16(num_classes=args.num_classes).cuda()
-    elif args.model == 'VGG19_complex' or 'VGG19_real':
-        model = VGG19(num_classes=args.num_classes).cuda()
-    else :
-        model = AlexNet(num_classes=args.num_classes).cuda()
+    if load:
+        model_path = loader_path+f"/{args.model}.pth"
+        dict_loaded = torch.load(model_path)
+        model.load_state_dict(dict_loaded['model'])
+        epochs = dict_loaded['epoch']
+        best_test_acc = dict_loaded['acc']
+    else:
+        epochs = 0
+        best_test_acc = 0.0
 
-    epochs = 0
-
-    model.cuda()
+    model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-4)
-    criterion = nn.CrossEntropyLoss().cuda()
+    criterion = nn.CrossEntropyLoss().to(device)
+
+    # variables for storing losses during one epoch
+    train_loss, train_acc = [], []
 
     for epoch in range(epochs, num_epochs+epochs):
+        train_loss, train_acc = training(model, num_epochs, epoch, train_loader, optimizer, criterion)
+        val_loss, val_acc = validation(model, val_loader, criterion)
 
-        train_loss, train_acc = training(model.cuda(), num_epochs, epoch, train_loader, optimizer, criterion)
-        
-        if global_rank == 0:
-            val_loss, val_acc = validation(model.cuda(), val_loader, criterion)
-            print(f"Train_loss: {train_loss}")
-            print(f"Val: {val_loss}")
+        if val_acc > best_test_acc:
+            print(f"Saving ... ")
+            state = {
+                    'model': model.state_dict(),
+                    'acc': val_acc,
+                    'epoch': epoch,
+                    }
 
-    if global_rank == 0:
-        test_loader = dataloaders.make_loader(test_loader, batch_size)
+            if save:
+                torch.save(state, model_path)
+            best_test_acc = val_acc
 
-        test_loss, test_acc = testing(model, test_loader, criterion, noise_type, RGBtrain_loader, None)
-        print(f"Test Loss: {test_loss}")
-        print(f"Test Accuracy: {test_acc*100} %\n")
+        print(f"Train_loss: {train_loss}")
+        print(f"Val: {val_loss}")
+
+        # Write results to CSV file
+        with open(csv_filename, mode='a', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow([epoch + 1, train_loss, train_acc, val_loss, val_acc, best_test_acc])
+
+    list_test_loader = dataloaders.npy_make_loader(list_test_loader, batch_size)
+    noise_list = ['gaussian_noise', 'shot_noise', 'impulse_noise', 'defocus_blur', 'glass_blur', 'motion_blur',
+    'zoom_blur', 'snow','frost', 'fog', 'brightness', 'contrast', 'elastic_transform', 'pixelate', 'jpeg_compression',
+    'speckle_noise', 'gaussian_blur', 'spatter', 'saturate']
+    
+    with open(csv_filename, mode='a', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(["Noise Type", "Test Loss", "Test Accuracy"])
+
+        for i in range(len(noise_list)):
+            noise_type = noise_list[i]
+            test_loss, test_acc = testing(model, list_test_loader[i], criterion, noise_type, RGBtrain_loader)
+            print(f"{noise_type} noise")
+            print(f"Test Loss: {test_loss}")
+            print(f"Test Accuracy: {test_acc*100} %")
+            print()
+
+            # Log test results to CSV file
+            writer.writerow([noise_type, test_loss, test_acc])
 
     return model
 
-
-model = main(args.epochs, args.batch_size, args.learning_rate, classes, train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, noise_type=args.noise_type, load=args.load, save=args.save)
+model = main(args.epochs, args.batch_size, args.lr, classes, train_loader=train_loader, val_loader=val_loader, list_test_loader=list_test_loader, noise_type=args.noise_type, load=args.load, save=args.save)
