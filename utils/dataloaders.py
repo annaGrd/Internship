@@ -2,6 +2,8 @@ import torch
 import torchvision
 from torchvision import transforms
 from utils.utils_data import ToComplex, ToHSV, ToiRGB
+import numpy as np
+from einops import rearrange
 
 
 def iget_train_data():
@@ -56,7 +58,31 @@ def RGBtest_data():
     test_data = torchvision.datasets.CIFAR10(root="./data", train=False,
                                             download=True, transform=transforms_real)
     return test_data
+    
+def npy_test_data():
+    noise_list = ['gaussian_noise', 'shot_noise', 'impulse_noise', 'defocus_blur', 'glass_blur', 'motion_blur',
+    'zoom_blur', 'snow', 'frost', 'fog', 'brightness', 'contrast', 'elastic_transform', 'pixelate', 'jpeg_compression',
+    'speckle_noise', 'gaussian_blur', 'spatter', 'saturate']
+    label_tensor = torch.from_numpy(np.load(f"./data/labels.npy"))
+    list_dataset = []
+    for noise in noise_list:
+        input_tensor = torch.from_numpy(np.load(f"./data/{noise}.npy")).to(torch.float)
+        input_tensor = rearrange(input_tensor, 'b h w c -> b c h w')
+        dataset = torch.utils.data.TensorDataset(input_tensor, label_tensor)
+        list_dataset.append(dataset)
+    return list_dataset
+    
+def npy_make_loader(list_dataset, batch_size):
+    list_loader = list()
+    for dataset in list_dataset:
+        list_loader.append(torch.utils.data.DataLoader(dataset, batch_size=batch_size,
+                                           shuffle=False))
+    return list_loader
 
-def make_loader(dataset, batch_size):
+def make_test_loader(dataset, batch_size):
     return torch.utils.data.DataLoader(dataset, batch_size=batch_size,
                                            shuffle=False)
+                                           
+def make_train_loader(dataset, batch_size):
+    return torch.utils.data.DataLoader(dataset, batch_size=batch_size,
+                                           shuffle=True)
