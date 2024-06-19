@@ -39,55 +39,13 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
-if args.model == 'AlexNet_real_small':
-    from models.AlexNet_real_small import AlexNet
-    train_loader, val_loader = dataloaders.RGBtrain_data()
-    test_loader = dataloaders.RGBtest_data()
-elif args.model == 'AlexNet_complex_bio':
-    from models.AlexNet_complex_bio import AlexNet
-    train_loader, val_loader = dataloaders.iget_train_data()
-    test_loader = dataloaders.iget_test_data()
-elif args.model == 'AlexNet_complex':
+if args.model == 'AlexNet_complex':
     from models.AlexNet_complex import ComplexWeigth_AlexNet, AlexNet
     train_loader, val_loader = dataloaders.iget_train_data()
-    # test_loader = dataloaders.iget_test_data()
-    list_test_loader = dataloaders.npy_test_data()
-elif args.model == 'VGG11_complex':
-    from models.VGG_complex import VGG11
-    train_loader, val_loader = dataloaders.iget_train_data()
-    test_loader = dataloaders.iget_test_data()
-elif args.model == 'VGG16_complex':
-    from models.VGG_complex import VGG16
-    train_loader, val_loader = dataloaders.iget_train_data()
-    test_loader = dataloaders.iget_test_data()
-elif args.model == 'VGG11_real':
-    from models.VGG_real import VGG11
-    train_loader, val_loader = dataloaders.RGBtrain_data()
-    test_loader = dataloaders.RGBtest_data()
-elif args.model == 'VGG16_real':
-    from models.VGG_real import VGG16
-    train_loader, val_loader = dataloaders.RGBtrain_data()
-    test_loader = dataloaders.RGBtest_data()
-elif args.model == 'VGG13_complex':
-    from models.VGG_complex import VGG13
-    train_loader, val_loader = dataloaders.iget_train_data()
-    test_loader = dataloaders.iget_test_data()
-elif args.model == 'VGG13_real':
-    from models.VGG_real import VGG13
-    train_loader, val_loader = dataloaders.RGBtrain_data()
-    test_loader = dataloaders.RGBtest_data()
-elif args.model == 'VGG19_complex':
-    from models.VGG_complex import VGG19
-    train_loader, val_loader = dataloaders.iget_train_data()
-    test_loader = dataloaders.iget_test_data()
-elif args.model == 'VGG19_real':
-    from models.VGG_real import VGG19
-    train_loader, val_loader = dataloaders.RGBtrain_data()
-    test_loader = dataloaders.RGBtest_data()
 else: # args.model == 'AlexNet_real':
     from models.AlexNet_real import AlexNet
     train_loader, val_loader = dataloaders.RGBtrain_data()
-    test_loader = dataloaders.RGBtest_data()
+list_test_loader = dataloaders.npy_test_data()
 
 
 def synchronise_gradients(model):
@@ -208,7 +166,7 @@ def testing(model, test_loader, criterion, noise_type, rgb_loader):
     return run_loss / cnt, correct / total
 
 def main(num_epochs, batch_size, learning_rate, classes, train_loader=train_loader, val_loader=val_loader, list_test_loader=list_test_loader, noise_type=None, load=False, save=False):
-    # Initialize CSV file
+
     csv_filename = f'{args.model}_results.csv'
     with open(csv_filename, mode='w', newline='') as file:
         writer = csv.writer(file)
@@ -219,28 +177,7 @@ def main(num_epochs, batch_size, learning_rate, classes, train_loader=train_load
     RGBtrain_loader = dataloaders.RGBtest_data()
     RGBtrain_loader = dataloaders.make_test_loader(RGBtrain_loader, batch_size)
 
-    if args.model == 'ResNet18_complex':
-        model = resnet18(num_classes=args.num_classes)
-    elif args.model == 'ResNet34_complex':
-        model = resnet34(num_classes=args.num_classes)
-    elif args.model == 'ResNet50_complex':
-        model = resnet50(num_classes=args.num_classes)
-    elif args.model == 'ResNet101_complex':
-        model = resnet101(num_classes=args.num_classes)
-    elif args.model == 'ResNet152_complex':
-        model = resnet152(num_classes=args.num_classes)
-    elif args.model == 'AlexNet_complex':
-        model = AlexNet(num_classes=args.num_classes).to(device)
-    elif args.model in ['VGG11_complex', 'VGG11_real']:
-        model = VGG11(num_classes=args.num_classes).to(device)
-    elif args.model in ['VGG13_complex', 'VGG13_real']:
-        model = VGG13(num_classes=args.num_classes).to(device)
-    elif args.model in ['VGG16_complex', 'VGG16_real']:
-        model = VGG16(num_classes=args.num_classes).to(device)
-    elif args.model in ['VGG19_complex', 'VGG19_real']:
-        model = VGG19(num_classes=args.num_classes).to(device)
-    else:  # AlexNet_real_small or AlexNet_complex_bio
-        model = AlexNet(num_classes=args.num_classes).to(device)
+    model = AlexNet(num_classes=args.num_classes).to(device)
 
     if load:
         model_path = loader_path+f"/{args.model}.pth"
@@ -301,7 +238,6 @@ def main(num_epochs, batch_size, learning_rate, classes, train_loader=train_load
             print(f"Test Accuracy: {test_acc*100} %")
             print()
 
-            # Log test results to CSV file
             writer.writerow([noise_type, test_loss, test_acc])
 
     return model
