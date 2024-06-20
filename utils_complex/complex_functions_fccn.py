@@ -9,17 +9,27 @@ import torch.nn.functional as F
 from utils_complex.complex_functions_bio import stable_angle, retrieve_elements_from_indices, get_complex_number, apply_layer_from_real
 from torch.overrides import has_torch_function, handle_torch_function
 
-# T = TypeVar('T')
-# _scalar_or_tuple_any_t = Union[T, tuple[T, ...]]
-# _scalar_or_tuple_1_t = Union[T, tuple[T]]
-# _scalar_or_tuple_2_t = Union[T, tuple[T, T]]
-# _scalar_or_tuple_3_t = Union[T, tuple[T, T, T]]
-#
-# # For arguments which represent size parameters (eg. kernel_size, padding)
-# _size_any_t = _scalar_or_tuple_any_t[int]
-# _size_1_t = _scalar_or_tuple_1_t[int]
-# _size_2_t = _scalar_or_tuple_2_t[int]
-# _size_3_t = _scalar_or_tuple_3_t[int]
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+def is_conv_layer(layer):
+    return isinstance(layer, (nn.Conv2d, ComplexConv2d))
+
+def is_bn_or_relu_layer(layer):
+    return isinstance(layer, (nn.BatchNorm2d, nn.ReLU))
+
+class Sequential(nn.Module):
+    def __init__(self, *layers):
+        super(Sequential, self).__init__()
+        self.layers = nn.ModuleList(layers)
+    
+    def forward(self, x):
+        for layer in self.layers:
+            if is_conv_layer(layer):
+                x = layer(x)
+            elif is_bn_or_relu_layer(layer):
+                x = layer(x.abs()) * torch.exp(stable_angle(x) * 1j)
+            else:
+                x = layer(x)
+        return x
 
 class ComplexConv2d(nn.Module):
     def __init__(self,
@@ -92,6 +102,34 @@ def apply_complex(fr, fi, input, dtype= torch.complex64): #
     #return (fr(input.real)).type(dtype) + 1j * (fi(input.imag)).type(dtype)
     return (fr(input.real)).type(dtype) + 1j * (fr(input.imag)).type(dtype)
 
+class AdaptiveAvgPoolToConv(nn.Module):
+    def __init__(self, kernel_size):
+        super(AdaptiveAvgPoolToConv, self).__init__()
+        self.kernel_size = kernel_size
+        self.conv = None
+    
+    def forward(self, x):
+        _, num_channels, H, W = x.shape
+        
+        # Calculer la taille de chaque kernel pour le pooling
+        kernel_H = H // self.kernel_size
+        kernel_W = W // self.kernel_size
+        
+        if self.conv is None or self.conv.kernel_size != (kernel_H, kernel_W):
+            # Définir la convolution avec un kernel de taille kernel_H x kernel_W
+            self.conv = ComplexConv2d(in_channels=num_channels, 
+                                  out_channels=num_channels, 
+                                  kernel_size=(kernel_H, kernel_W), 
+                                  stride=(kernel_H, kernel_W), 
+                                  padding=0, 
+                                  groups=num_channels, 
+                                  bias=False).to(device)
+            
+            # # Initialiser les poids de la convolution pour calculer la moyenne
+            # with torch.no_grad():
+            #     self.conv.weight.fill_(1.0 / (kernel_H * kernel_W))
+        
+        return self.conv(x)
 
 class ComplexMaxPool2d(nn.Module):
     def __init__(self, kernel_size, stride= None, padding= 0, dilation= 1, return_indices= False, ceil_mode= False):
