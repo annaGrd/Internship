@@ -15,7 +15,7 @@ global_rank = int(os.environ["RANK"])
 
 torch.cuda.set_device(rank)
 
-dist.init_process_group(back    end="nccl")
+dist.init_process_group(backend="nccl")
 
 def arguments():
     parser = argparse.ArgumentParser(description="Classifying natural images with complex-valued neural networks")
