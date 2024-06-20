@@ -42,6 +42,11 @@ classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship'
 if args.model == 'AlexNet_complex':
     from models.AlexNet_complex import ComplexWeigth_AlexNet, AlexNet
     train_loader, val_loader = dataloaders.iget_train_data()
+    
+elif args.model == 'ResNet18_complex' or args.model =='ResNet34_complex' or args.model =='ResNet50_complex' or args.model =='ResNet101_complex' or args.model =='ResNet152_complex':
+    from models.Resnet_complex import resnet18, resnet34, resnet50, resnet101, resnet152
+    train_loader, val_loader = dataloaders.iget_train_data()
+    
 else: # args.model == 'AlexNet_real':
     from models.AlexNet_real import AlexNet
     train_loader, val_loader = dataloaders.RGBtrain_data()
@@ -75,6 +80,8 @@ def training(model, num_epochs, epoch, train_loader, optimizer, criterion):
         outputs = model(selected_images)
         if args.model.startswith("AlexNet"):
             outputs = outputs[-1]
+        elif args.model.startswith("ResNet"): 
+            labels = labels.view(-1, 1, 1)
         outputs_magnitude = outputs.abs()
         loss = criterion(outputs_magnitude, selected_labels)
 
@@ -113,6 +120,8 @@ def validation(model, val_loader, criterion):
             outputs = model(images)
             if args.model.startswith("AlexNet"):
                 outputs = outputs[-1]
+            elif args.model.startswith("ResNet"): 
+                labels = labels.view(-1, 1, 1)
             outputs_magnitude = outputs.abs()
             loss = criterion(outputs_magnitude, labels)
 
@@ -154,6 +163,8 @@ def testing(model, test_loader, criterion, noise_type, rgb_loader):
 
             if args.model.startswith("AlexNet"):
                 outputs = outputs[-1]
+            elif args.model.startswith("ResNet"): 
+                labels = labels.view(-1, 1, 1)
             outputs_magnitude = outputs.abs()
             loss = criterion(outputs_magnitude, labels)
 
@@ -183,8 +194,17 @@ def main(num_epochs, batch_size, learning_rate, classes, train_loader=train_load
     RGBtrain_loader = dataloaders.RGBtest_data()
     RGBtrain_loader = dataloaders.make_test_loader(RGBtrain_loader, batch_size)
 
-    #if args.model == 'AlexNet_real_small' or args.model == 'AlexNet_complex_bio':
-    if args.model == 'AlexNet_complex':
+    if args.model == 'ResNet18_complex':
+        model = resnet18(num_classes=args.num_classes).to(device)
+    elif args.model == 'ResNet34_complex':
+        model = resnet34(num_classes=args.num_classes).to(device)
+    elif args.model == 'ResNet50_complex':
+        model = resnet50(num_classes=args.num_classes).to(device)
+    elif args.model == 'ResNet101_complex':
+        model = resnet101(num_classes=args.num_classes).to(device)
+    elif args.model == 'ResNet152_complex':
+        model = resnet152(num_classes=args.num_classes).to(device)
+    elif args.model == 'AlexNet_complex':
         #ComplexWeigth_AlexNet, AlexNet
         model = ComplexWeigth_AlexNet(num_classes=args.num_classes).cuda()
     elif args.model == 'VGG11_complex' or 'VGG11_real':
@@ -195,7 +215,7 @@ def main(num_epochs, batch_size, learning_rate, classes, train_loader=train_load
         model = VGG16(num_classes=args.num_classes).cuda()
     elif args.model == 'VGG19_complex' or 'VGG19_real':
         model = VGG19(num_classes=args.num_classes).cuda()
-    else :
+    else :    #if args.model == 'AlexNet_real_small' or args.model == 'AlexNet_complex_bio':
         model = AlexNet(num_classes=args.num_classes).cuda()
 
     if load:
