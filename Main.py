@@ -219,13 +219,13 @@ def main(num_epochs, batch_size, learning_rate, classes, train_loader=train_load
     elif args.model == 'AlexNet_complex':
         #ComplexWeigth_AlexNet, AlexNet
         model = ComplexWeigth_AlexNet(num_classes=args.num_classes).to(device)
-    elif args.model == 'VGG11_complex' or 'VGG11_real':
+    elif args.model in ('VGG11_complex', 'VGG11_real'):
         model = VGG11(num_classes=args.num_classes).to(device)
-    elif args.model == 'VGG13_complex' or 'VGG13_real':
+    elif args.model in ('VGG13_complex', 'VGG13_real'):
         model = VGG13(num_classes=args.num_classes).to(device)
-    elif args.model == 'VGG16_complex' or 'VGG16_real':
+    elif args.model in ('VGG16_complex', 'VGG16_real'):
         model = VGG16(num_classes=args.num_classes).to(device)
-    elif args.model == 'VGG19_complex' or 'VGG19_real':
+    elif args.model in ('VGG19_complex', 'VGG19_real'):
         model = VGG19(num_classes=args.num_classes).to(device)
     elif args.model == 'ResNet18_real':
         model = resnet18(num_classes=args.num_classes).to(device)
