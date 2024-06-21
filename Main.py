@@ -93,7 +93,7 @@ def training(model, num_epochs, epoch, train_loader, optimizer, criterion):
         if args.model.startswith("AlexNet"):
             outputs = outputs[-1]
         elif args.model.startswith("ResNet"): 
-            labels = labels.view(-1, 1, 1)
+            selected_labels = selected_labels.view(-1, 1, 1)
         outputs_magnitude = outputs.abs()
         loss = criterion(outputs_magnitude, selected_labels)
 
@@ -279,10 +279,10 @@ def main(num_epochs, batch_size, learning_rate, classes, train_loader=train_load
             print(f"Train_loss: {train_loss}")
             print(f"Val: {val_loss}")
 
-        # Write results to CSV file
-        with open(csv_filename, mode='a', newline='') as file:
-            writer = csv.writer(file)
-            writer.writerow([epoch + 1, train_loss, train_acc, val_loss, val_acc, best_test_acc])
+            # Write results to CSV file
+            with open(csv_filename, mode='a', newline='') as file:
+                writer = csv.writer(file)
+                writer.writerow([epoch + 1, train_loss, train_acc, val_loss, val_acc, best_test_acc])
 
     if global_rank == 0:
         list_test_loader = dataloaders.npy_make_loader(list_test_loader, batch_size)
