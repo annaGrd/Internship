@@ -171,7 +171,7 @@ def testing(model, test_loader, criterion, noise_type, rgb_loader):
 
         for batch_idx, (images, labels) in enumerate(test_loader):
             images, labels = images.to(device), labels.to(device)
-            outputs = model(images)[-1]
+            outputs = model(images)
 
             if args.model.startswith("AlexNet"):
                 outputs = outputs[-1]
