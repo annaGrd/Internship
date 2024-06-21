@@ -178,6 +178,7 @@ def testing(model, test_loader, criterion, noise_type, rgb_loader):
             elif args.model.startswith("ResNet"): 
                 labels = labels.view(-1, 1, 1)
             outputs_magnitude = outputs.abs()
+            labels = labels.to(torch.int64)
             loss = criterion(outputs_magnitude, labels)
 
             run_loss += loss
@@ -240,8 +241,10 @@ def main(num_epochs, batch_size, learning_rate, classes, train_loader=train_load
     else :    #if args.model == 'AlexNet_real_small' or args.model == 'AlexNet_complex_bio':
         model = AlexNet(num_classes=args.num_classes).to(device)
 
-    if load:
+    if load or save:
         model_path = loader_path+f"/{args.model}.pth"
+
+    if load:
         dict_loaded = torch.load(model_path)
         model.load_state_dict(dict_loaded['model'])
         epochs = dict_loaded['epoch']
@@ -250,7 +253,7 @@ def main(num_epochs, batch_size, learning_rate, classes, train_loader=train_load
         epochs = 0
         best_test_acc = 0.0
 
-    model.to(device)
+    model.to(device) # If i remember correctly .to isn't in place, so this line does nothing
 
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-4)
     criterion = nn.CrossEntropyLoss().to(device)
