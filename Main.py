@@ -299,7 +299,7 @@ def main(num_epochs, batch_size, learning_rate, classes, train_loader=train_load
     return model
 
 
-model = main(args.epochs, args.batch_size, args.learning_rate, classes, train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, noise_type=args.noise_type, load=args.load, save=args.save)
+model = main(args.epochs, args.batch_size, args.learning_rate, classes, train_loader=train_loader, val_loader=val_loader, list_test_loader=list_test_loader, noise_type=args.noise_type, load=args.load, save=args.save)
 
 if global_rank == 0:    
     torch.save(model, f"{args.model}_{args.epochs}_{args.batch_size}.pt")
