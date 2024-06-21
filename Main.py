@@ -46,6 +46,10 @@ if args.model == 'AlexNet_complex':
 elif args.model == 'ResNet18_complex' or args.model =='ResNet34_complex' or args.model =='ResNet50_complex' or args.model =='ResNet101_complex' or args.model =='ResNet152_complex':
     from models.Resnet_complex import resnet18, resnet34, resnet50, resnet101, resnet152
     train_loader, val_loader = dataloaders.iget_train_data()
+
+elif args.model == 'ResNet18_real' or args.model =='ResNet34_real' or args.model =='ResNet50_real' or args.model =='ResNet101_real' or args.model =='ResNet152_real':
+    from models.ResNet_real import resnet18, resnet34, resnet50, resnet101, resnet152
+    train_loader, val_loader = dataloaders.RGBtrain_data()
     
 else: # args.model == 'AlexNet_real':
     from models.AlexNet_real import AlexNet
@@ -215,6 +219,16 @@ def main(num_epochs, batch_size, learning_rate, classes, train_loader=train_load
         model = VGG16(num_classes=args.num_classes).cuda()
     elif args.model == 'VGG19_complex' or 'VGG19_real':
         model = VGG19(num_classes=args.num_classes).cuda()
+    elif args.model == 'ResNet18_real':
+        model = resnet18(num_classes=args.num_classes).to(device)
+    elif args.model == 'ResNet34_real':
+        model = resnet34(num_classes=args.num_classes).to(device)
+    elif args.model == 'ResNet50_real':
+        model = resnet50(num_classes=args.num_classes).to(device)
+    elif args.model == 'ResNet101_real':
+        model = resnet101(num_classes=args.num_classes).to(device)
+    elif args.model == 'ResNet152_real':
+        model = resnet152(num_classes=args.num_classes).to(device)
     else :    #if args.model == 'AlexNet_real_small' or args.model == 'AlexNet_complex_bio':
         model = AlexNet(num_classes=args.num_classes).cuda()
 
