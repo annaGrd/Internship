@@ -9,7 +9,7 @@ import torch.nn.functional as F
 from utils_complex.complex_functions_bio import stable_angle, retrieve_elements_from_indices, get_complex_number, apply_layer_from_real
 from torch.overrides import has_torch_function, handle_torch_function
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 def is_conv_layer(layer):
     return isinstance(layer, (nn.Conv2d, ComplexConv2d))
 
