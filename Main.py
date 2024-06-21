@@ -196,7 +196,7 @@ def testing(model, test_loader, criterion, noise_type, rgb_loader):
 
 def main(num_epochs, batch_size, learning_rate, classes, train_loader=train_loader, val_loader=val_loader, list_test_loader=list_test_loader, noise_type=None, load=False, save=False):
 
-    csv_filename = f'{args.model}_results.csv'
+    csv_filename = f'{args.model}_{args.epochs}_{args.batch_size}_results.csv'
     with open(csv_filename, mode='w', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(["Epoch", "Train Loss", "Train Accuracy", "Val Loss", "Val Accuracy", "Best Accuracy"])
