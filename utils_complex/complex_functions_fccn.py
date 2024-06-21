@@ -5,10 +5,10 @@ import torch
 from typing import TypeVar, Union, Tuple, Optional
 from torch import nn, Tensor
 from torch.nn import Module, Parameter, init
+import pytorch_lightning as pl
 import torch.nn.functional as F
 from utils_complex.complex_functions_bio import stable_angle, retrieve_elements_from_indices, get_complex_number, apply_layer_from_real
 from torch.overrides import has_torch_function, handle_torch_function
-
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 def is_conv_layer(layer):
     return isinstance(layer, (nn.Conv2d, ComplexConv2d))
@@ -30,6 +30,7 @@ class Sequential(nn.Module):
             else:
                 x = layer(x)
         return x
+
 
 class ComplexConv2d(nn.Module):
     def __init__(self,
@@ -53,7 +54,7 @@ class ComplexConv2d(nn.Module):
         #     raise ValueError(f"in_channels and out_channels should be even. Got {in_channels} and {out_channels}")
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
+        self.kernel_size = kernel_size
         self.conv_real = nn.Conv2d(in_channels, out_channels, kernel_size= kernel_size, stride= stride, padding= padding, dilation= dilation, groups= groups, bias= bias)
         #self.conv_imag = nn.Conv2d(in_channels, out_channels, kernel_size= kernel_size, stride= stride, padding= padding, dilation= dilation, groups= groups, bias= bias)
 
@@ -84,9 +85,9 @@ class RealToComplexConvolution2D(nn.Module):
         super().__init__()
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-        self.conv_real = nn.Conv2d(in_channels, out_channels, kernel_size= kernel_size, stride= stride, padding= padding, dilation= dilation, groups= groups, bias= bias)
-        self.conv_imag = nn.Conv2d(in_channels, out_channels, kernel_size= kernel_size, stride= stride, padding= padding, dilation= dilation, groups= groups, bias= bias)
+        self.kernel_size = kernel_size
+        self.conv_real = nn.Conv2d(in_channels, out_channels, kernel_size= kernel_size, stride= stride, padding= padding, dilation= dilation, groups= groups, bias= bias).to(device)
+        self.conv_imag = nn.Conv2d(in_channels, out_channels, kernel_size= kernel_size, stride= stride, padding= padding, dilation= dilation, groups= groups, bias= bias).to(device)
 
 
     def forward(self, x):
@@ -101,7 +102,8 @@ def apply_complex(fr, fi, input, dtype= torch.complex64): #
     #return (fr(input.real) - fi(input.imag)).type(dtype) + 1j * (fr(input.imag) + fi(input.real)).type(dtype)
     #return (fr(input.real)).type(dtype) + 1j * (fi(input.imag)).type(dtype)
     return (fr(input.real)).type(dtype) + 1j * (fr(input.imag)).type(dtype)
-
+    
+    
 class AdaptiveAvgPoolToConv(nn.Module):
     def __init__(self, kernel_size):
         super(AdaptiveAvgPoolToConv, self).__init__()
@@ -130,6 +132,7 @@ class AdaptiveAvgPoolToConv(nn.Module):
             #     self.conv.weight.fill_(1.0 / (kernel_H * kernel_W))
         
         return self.conv(x)
+
 
 class ComplexMaxPool2d(nn.Module):
     def __init__(self, kernel_size, stride= None, padding= 0, dilation= 1, return_indices= False, ceil_mode= False):
@@ -475,7 +478,3 @@ class ComplexBatchNorm2d(torch.nn.Module):
     def extra_repr(self):
         return '{num_features}, eps={eps}, momentum={momentum}, affine={affine}, ' \
                 'track_running_stats={track_running_stats}'.format(**self.__dict__)
-
-
-
-
