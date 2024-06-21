@@ -6,7 +6,7 @@ import utils_complex.complex_functions_fccn as cf
 from typing import Type, Any, Callable, Union, List, Optional
 __all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
            'resnet152']
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 class Bottleneck(nn.Module):
     expansion: int = 4
 

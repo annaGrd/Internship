@@ -17,6 +17,14 @@ torch.cuda.set_device(rank)
 
 dist.init_process_group(backend="nccl")
 
+
+def str2bool(x):
+    if x.lower() == "false":
+        return False
+    else:
+        return True
+
+
 def arguments():
     parser = argparse.ArgumentParser(description="Classifying natural images with complex-valued neural networks")
 
@@ -26,8 +34,8 @@ def arguments():
     parser.add_argument('--epochs', default=1, type=int)
     parser.add_argument('--num_classes', default=10, type=int)
     parser.add_argument('--noise_type', default=None)
-    parser.add_argument('--load', default=False, type=bool)
-    parser.add_argument('--save', default=False, type=bool)
+    parser.add_argument('--load', type=str2bool, default=False)
+    parser.add_argument('--save', type=str2bool, default=False)
 
     parser.add_argument('--model', type=str, default='AlexNet_complex')
 
@@ -73,7 +81,7 @@ def training(model, num_epochs, epoch, train_loader, optimizer, criterion):
 
     for i, (images, labels) in enumerate(train_loader): # to get all the different batches
 
-        images, labels = images.cuda(), labels.cuda()
+        images, labels = images.to(device), labels.to(device)
 
         splitted_images = torch.split(images, images.size(0)//world_size)
         splitted_labels = torch.split(labels, labels.size(0)//world_size)
@@ -118,7 +126,7 @@ def validation(model, val_loader, criterion):
         run_loss = 0.0
 
         for batch_idx, (images, labels) in enumerate(val_loader):
-            images, labels = images.cuda(), labels.cuda()
+            images, labels = images.to(device), labels.to(device)
 
             #outputs = model(images)[-1]
             outputs = model(images)
@@ -162,7 +170,7 @@ def testing(model, test_loader, criterion, noise_type, rgb_loader):
         run_loss = 0.0
 
         for batch_idx, (images, labels) in enumerate(test_loader):
-            images, labels = images.cuda(), labels.cuda()
+            images, labels = images.to(device), labels.to(device)
             outputs = model(images)[-1]
 
             if args.model.startswith("AlexNet"):
@@ -210,15 +218,15 @@ def main(num_epochs, batch_size, learning_rate, classes, train_loader=train_load
         model = resnet152(num_classes=args.num_classes).to(device)
     elif args.model == 'AlexNet_complex':
         #ComplexWeigth_AlexNet, AlexNet
-        model = ComplexWeigth_AlexNet(num_classes=args.num_classes).cuda()
+        model = ComplexWeigth_AlexNet(num_classes=args.num_classes).to(device)
     elif args.model == 'VGG11_complex' or 'VGG11_real':
-        model = VGG11(num_classes=args.num_classes).cuda()
+        model = VGG11(num_classes=args.num_classes).to(device)
     elif args.model == 'VGG13_complex' or 'VGG13_real':
-        model = VGG13(num_classes=args.num_classes).cuda()
+        model = VGG13(num_classes=args.num_classes).to(device)
     elif args.model == 'VGG16_complex' or 'VGG16_real':
-        model = VGG16(num_classes=args.num_classes).cuda()
+        model = VGG16(num_classes=args.num_classes).to(device)
     elif args.model == 'VGG19_complex' or 'VGG19_real':
-        model = VGG19(num_classes=args.num_classes).cuda()
+        model = VGG19(num_classes=args.num_classes).to(device)
     elif args.model == 'ResNet18_real':
         model = resnet18(num_classes=args.num_classes).to(device)
     elif args.model == 'ResNet34_real':
@@ -230,7 +238,7 @@ def main(num_epochs, batch_size, learning_rate, classes, train_loader=train_load
     elif args.model == 'ResNet152_real':
         model = resnet152(num_classes=args.num_classes).to(device)
     else :    #if args.model == 'AlexNet_real_small' or args.model == 'AlexNet_complex_bio':
-        model = AlexNet(num_classes=args.num_classes).cuda()
+        model = AlexNet(num_classes=args.num_classes).to(device)
 
     if load:
         model_path = loader_path+f"/{args.model}.pth"
@@ -297,7 +305,6 @@ def main(num_epochs, batch_size, learning_rate, classes, train_loader=train_load
                 writer.writerow([noise_type, test_loss, test_acc])
 
     return model
-
 
 model = main(args.epochs, args.batch_size, args.learning_rate, classes, train_loader=train_loader, val_loader=val_loader, list_test_loader=list_test_loader, noise_type=args.noise_type, load=args.load, save=args.save)
 
