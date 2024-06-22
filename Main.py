@@ -242,7 +242,7 @@ def main(num_epochs, batch_size, learning_rate, classes, train_loader=train_load
         model = AlexNet(num_classes=args.num_classes).to(device)
 
     if load or save:
-        model_path = loader_path+f"/{args.model}_{args.epochs}_{args.batch_size}_better_accuracy.pth"
+        model_path = f"/{args.model}_{args.epochs}_{args.batch_size}_better_accuracy.pth"
 
     if load:
         dict_loaded = torch.load(model_path)
